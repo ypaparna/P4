@@ -29,6 +29,7 @@ library(zipcode)
 data("zipcode")
 library(gender)
 library(gridExtra)
+library(viridis)
 
 ```
 
@@ -54,7 +55,8 @@ summary(wa_2008)
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 
-wa_subset <- subset(wa_2008,  (wa_2008$memo_cd != 'X' ) & (wa_2008$contb_receipt_amt >0))
+wa_subset <- subset(wa_2008,  (wa_2008$memo_cd != 'X' ) & 
+                      (wa_2008$contb_receipt_amt >0))
 wa <- wa_subset[3:11]
 
 ```
@@ -69,13 +71,19 @@ table(wa$cand_nm)
 ```
 ###Remove candidates who have received less than 500 contributions
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
-wa <- subset(wa, !(wa$cand_nm %in% c("Hunter, Duncan", "Gilmore, James S III", "Cox, John H","Gravel, Mike",
-"Dodd, Christopher J", "Biden, Joseph R Jr", "Giuliani, Rudolph W", "Brownback, Samuel Dale","Tancredo, Thomas Gerald" )))
+wa <- subset(wa, !(wa$cand_nm %in% c("Hunter, Duncan", "Gilmore, James S III", 
+                                     "Cox, John H","Gravel, Mike",
+                                     "Dodd, Christopher J",
+                                     "Biden, Joseph R Jr",
+                                     "Giuliani, Rudolph W",
+                                     "Brownback, Samuel Dale",
+                                     "Tancredo, Thomas Gerald" )))
 ##Adjust levels 
 wa <- droplevels(wa)
 
 ```
-###Clean up zipcode(contbr_zip) column by keeping only first five characters and display the top 6 zipcodes where the most number of donations came from.
+###Clean up zipcode(contbr_zip) column by keeping only first five characters 
+and display the top 6 zipcodes where the most number of donations came from.
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 wa$contbr_zip <- substr(wa$contbr_zip, 0, 5)
 wa <- subset(wa, !is.na(wa$contbr_zip))
@@ -94,16 +102,19 @@ wa$contb_receipt_dt <- as.Date(wa$contb_receipt_dt, format = "%d-%B-%y")
 ```
 
 ###Add two additional columns
- -- party column based on the candidate name and gender column based on the contributor's first name
+ -- party column based on the candidate name and gender column based on the 
+ contributor's first name
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 getParty <- function(x) {
   if(is.na(x)){
     NA
-  }else if(x == "Bachmann, Michele" | x == "Cain, Herman" | x == "Paul, Ron" |x=='Brownback, Samuel Dale'|
-          x=='Romney, Mitt'| x=='Giuliani, Rudolph W' |x=='McCain, John S'| x=='Thompson, Fred Dalton' | x=='Huckabee, Mike' ){
+  }else if(x == "Bachmann, Michele" | x == "Cain, Herman" | x == "Paul, Ron" 
+           |x=='Brownback, Samuel Dale'|x=='Romney, Mitt'
+           | x=='Giuliani, Rudolph W' |x=='McCain, John S'
+           | x=='Thompson, Fred Dalton' | x=='Huckabee, Mike' ){
     "R"
-  }else if(x == "Obama, Barack" | x=='Edwards, John' | x== 'Richardson, Bill'| x== 'Kucinich, Dennis J'|
-           x=='Clinton, Hillary Rodham'  ){
+  }else if(x == "Obama, Barack" | x=='Edwards, John' | x== 'Richardson, Bill'
+           | x== 'Kucinich, Dennis J'|x=='Clinton, Hillary Rodham'  ){
     "D"
   }else{
     NA
@@ -115,10 +126,12 @@ wa$party <- apply(wa['cand_nm'],1,getParty)
 
 ###Split name into first name and Last name
 
-wa <- extract(wa, contbr_nm, c("LastName","FirstName"), "(.*),\\s*(\\S*)\\s*.*", fill="left",perl=TRUE)
+wa <- extract(wa, contbr_nm, c("LastName","FirstName"),
+              "(.*),\\s*(\\S*)\\s*.*", fill="left",perl=TRUE)
 
 ###using gender package and first name predict the gender
-gender <- gender(wa$FirstName, c(1932,1998), method= "ssa", countries = "United States")
+gender <- gender(wa$FirstName, c(1932,1998),
+                 method= "ssa", countries = "United States")
 gender <- unique(gender)
 names(gender)[1] = "FirstName"
 ###merge gender column with the original dataframe
@@ -130,8 +143,10 @@ wa$party <- as.factor(wa$party)
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 str(wa)
 ```
-WA state 2008 election dataset is ready for Analysis: It contains 130353 observations and 12 variables.
-  -- Two new columns (party, gender) were added to the orginal dataset to help with exploration
+WA state 2008 election dataset is ready for Analysis: It contains 130353 
+observations and 12 variables.
+  -- Two new columns (party, gender) were added to the orginal dataset to help 
+      with exploration
   -- Removed variables that were not helpful for analysis
   
 ###Summary of the variables and total $ contributed by gender:
@@ -143,16 +158,33 @@ tapply(wa$contb_receipt_amt,wa$gender, sum )
 
 #Univariate Analysis
 
+```{r}
+ggplot(aes(x=contb_receipt_amt), data = subset(wa,contb_receipt_amt>0))+
+  geom_histogram( bins = 30, color='black',fill='light blue')+scale_x_log10()+
+#  geom_histogram(binwidth = 25, color='black',fill='light blue')+
+ # scale_x_continuous(limits=c(0,600), breaks=seq(0,600,50))+
+  xlab("Contribution Amout on log10 scale")+
+  ylab("Number of contributions")
+
+```
+
+In general most contributions falls between 10 and 1000. However, there are few
+outliers with below $10 donations and above $1000 donations. Since these are few
+numbers, we can focus and take a closer look for donations below $1000.
+We can explore that with the below histogram
+
+
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 ggplot(wa, aes(x=contb_receipt_amt))+
   geom_histogram(binwidth = 25, color='black',fill='light blue')+
-  scale_x_continuous(limits=c(0,600), breaks=seq(0,600,50))+
+  scale_x_continuous(limits=c(0,1000), breaks=seq(0,1000,50))+
   xlab("Contribution Amout")+
   ylab("Number of contributions")
 
 ```
 
-We can conclude from the above histogram that most contributions are for $25, $100 followed by $250.  Few people made contributions above $250.
+We can conclude from the above histogram that most contributions are for $25, 
+$100 followed by $250.  Few people made contributions above $250.
 
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
@@ -165,7 +197,8 @@ p1<- ggplot(wa, aes(x=cand_nm)) +
 p1+theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-Above histogram shows that Barack Obama received significantly more number of contributions than any other candidate.
+Above histogram shows that Barack Obama received significantly more number of 
+contributions than any other candidate.
 Next highest number of contributions were received by Hillary Clinton.
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
@@ -176,7 +209,10 @@ ggplot(wa, aes(x=party)) +
   ylab("Number of Contributions received")+
   scale_y_continuous(limit= c(0,125000))
 ```
-Democrats received at least 8 times more number of contributions than republicans in the state of WA. WA is typically a liberal state, so the data is not surprising.
+
+Democrats received at least 8 times more number of contributions than 
+republicans in the state of WA. WA is typically a liberal state, so the data 
+is not surprising.
 
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
@@ -188,24 +224,32 @@ ggplot(wa, aes(x=gender)) +
   scale_y_continuous(limit= c(0,80000))
 
 ```
+
 Number of Contributions from both males and females is almost equal
 
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 
-ggplot(wa, aes(contb_receipt_dt)) + geom_histogram(bins = 24,color='black',fill='light blue')+
+ggplot(wa, aes(contb_receipt_dt)) + geom_histogram(bins = 24,color='black',
+                                                   fill='light blue')+
   xlab("Contribution date")+
   ylab("Number of contributions received")
 
 ```
 
-This is a negatively skewed distribution indicating most contributions came as the general election was getting close. In 2007 when candidates declared their intent to run, they started receiving contributions but in low numbers. Significant number of contributions came after primaries and national conventions are done.
+This is a negatively skewed distribution indicating most contributions came as 
+the general election was getting close. In 2007 when candidates declared their 
+intent to run, they started receiving contributions but in low numbers. 
+Significant number of contributions came after primaries and national 
+conventions are done.
+
 
 
 # Univariate Analysis
 
 ### What is the structure of your dataset?
-WA state 2008 election contributions dataset contains 130353 observations and 12 variables.
+WA state 2008 election contributions dataset contains 130353 observations and 
+12 variables.
 Other observations:
 -Most contributions went to Democrats
 -Median donation is $25
@@ -216,26 +260,34 @@ Other observations:
 -Republicans received 14,000 + contributions
 
 ### What is/are the main feature(s) of interest in your dataset?
-  Main features of interest for analysis is the size and number of contributions.
+  Main features of interest for analysis is the size and number of 
+  contributions.
   Number of contributions received by party
   Number of contributions received by each candidate
-### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+### What other features in the dataset do you think will help support your
+investigation into your feature(s) of interest?
 
   Zipcodes impact on contributions
   Gender impact on contributions
 ### Did you create any new variables from existing variables in the dataset?
 
 I created two new variables in the dataset.
-party - Candidate name is used to identify party for each record.  This will help to analyze contributions by party.
-gender - I split the contributor's name into first name and last name.  With the help of gender package and utilizing the first name, I predicted the contributor's gender.  This will help to analyze gender influence on the contributions and support for a candidate.
+party - Candidate name is used to identify party for each record.  This will
+help to analyze contributions by party.
+gender - I split the contributor's name into first name and last name.  
+With the help of gender package and utilizing the first name, I predicted
+the contributor's gender.  This will help to analyze gender influence on the 
+contributions and support for a candidate.
 
-###Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+###Of the features you investigated, were there any unusual distributions? Did
+###you perform any operations on the data to tidy, adjust, or change the form of 
+###the data? If so, why did you do this?
 
 
 # Bivariate Analysis
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
-ggplot(aes(x=cand_nm, y=contb_receipt_amt), data =wa)+
+p1 <-ggplot(aes(x=cand_nm, y=contb_receipt_amt), data =wa)+
   geom_point(alpha=1/10, position= position_jitter(h=0), color='orange')+
   coord_cartesian( ylim=c(0,2500))+
   geom_line(stat = 'summary', fun.y = mean, group =1,color = 'blue')+
@@ -243,9 +295,24 @@ ggplot(aes(x=cand_nm, y=contb_receipt_amt), data =wa)+
   xlab("Candidate Name")+
   ylab("Amount per contribution")
   #geom_line(stat = 'count')
+
+
+p2 <- ggplot(aes(x=cand_nm, y=contb_receipt_amt), 
+       data=subset(wa, !is.na(contbr_zip)))+
+  geom_boxplot(fill='#A4A4A4', color="darkblue")+
+  coord_cartesian( ylim=c(0,2500))+
+ stat_summary(fun.y=mean, geom = 'point', shape =4)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+   xlab("Candidate Name")+
+  ylab("Amount per contribution")
+
+grid.arrange(p1,p2, nrow=1)
 ```
 
-This scatter plot shows that most contributions are below $250.  Also the line representing mean contributions by candidate shows John McCain and Mitt Romney (Republican candidates) have higher means than Hillary Clinton and Barack Obama(Democratic candidates).  
+Above plost show that most contributions are below $250.  Also the line 
+representing mean contributions by candidate shows John McCain and Mitt Romney
+(Republican candidates) have higher means than Hillary Clinton and 
+Barack Obama (Democratic candidates).  
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 ggplot(aes(x=party, y=contb_receipt_amt), data =wa)+
@@ -258,7 +325,9 @@ ggplot(aes(x=party, y=contb_receipt_amt), data =wa)+
   #geom_line(stat = 'count')
 ```
 
-Democrats received significantly more number of contributions than Republicans. Mean contribution amount is around $125 for Democrats and little above $250 for Republicans.
+Democrats received significantly more number of contributions than Republicans. 
+Mean contribution amount is around $125 for Democrats and little above $250 for 
+Republicans.
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 ggplot(aes(x=gender, y=contb_receipt_amt), data =wa)+
@@ -274,7 +343,8 @@ ggplot(aes(x=gender, y=contb_receipt_amt), data =wa)+
 There is not a significant difference in number of contributions based on gender. 
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
-ggplot(aes(x=cand_nm, y=contb_receipt_amt), data=subset(wa, !is.na(contbr_zip)))+
+ggplot(aes(x=cand_nm, y=contb_receipt_amt), 
+       data=subset(wa, !is.na(contbr_zip)))+
   geom_boxplot(fill='#A4A4A4', color="darkblue")+
   scale_y_continuous(limit= c(0,250), breaks=seq(0,250,25))+
  stat_summary(fun.y=mean, geom = 'point', shape =4)+
@@ -295,38 +365,47 @@ ggplot(aes(x=party, y=contb_receipt_amt), data=subset(wa, !is.na(contbr_zip)))+
   xlab("Party")+
   ylab("Amount per contribution")
 ```
-Both median and mean are higher for Republican party for the amount per contribution. Here x indicates the mean.
-This shows that even though overall number of contributions are lower for Republican party, amounts per contribution are higher.
+
+Both median and mean are higher for Republican party for the amount per 
+contribution. Here x indicates the mean.
+This shows that even though overall number of contributions are lower for 
+Republican party, amounts per contribution are higher.
 
 ###Data transformation - summarize contributions by candidate
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 wag1 <- group_by (wa, cand_nm)
-wa.by_candnm <- summarise(wag1, contribution_mean=mean(contb_receipt_amt), contribution_median=median(contb_receipt_amt),
-                                 contribution_total=sum(contb_receipt_amt), n=n())
+wa.by_candnm <- summarise(wag1, contribution_mean=mean(contb_receipt_amt),  contribution_median=median(contb_receipt_amt),
+contribution_total=sum(contb_receipt_amt),
+n=n())
 arrange(wa.by_candnm, cand_nm )
 ```
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
  ggplot(aes(x=cand_nm, y=contribution_mean), data=wa.by_candnm)+
-  geom_line(aes( group=1), color='blue', linetype ='solid', size=1)+
+  geom_bar(aes(), group=1 ,stat="identity", color='black',fill= 'light blue',
+           position='dodge')+
   ylab("Contribution mean")+
   xlab("Candidate Name")+
-  theme(axis.text.x = element_text(angle = 30, hjust=1))
+  theme(axis.text.x = element_text(angle = 60, hjust=1))
 ```
 
 MItt Romney received the highest contribution means followed by John McCain.  
+Barack Obama's mean is lower than most of his democratic peers.
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 ggplot(aes(x=cand_nm, y=contribution_total/1000000), data=wa.by_candnm)+
-  geom_line(aes( group=1),color='blue', linetype ='solid', size=1)+
+  geom_bar(aes(), group=1 ,stat="identity", color='black',fill= 'light blue',
+           position='dodge')+
   ylab("Total contributions received in millions" )+
   xlab("Candidate Name")+
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
 
 ```
 
-Overall Barack Obama received around $15 millions in total contributions even though his mean contributions are much lower than the republican candidates.  Hillary Clinton received around $2.5 millions.
+Overall Barack Obama received around $15 millions in total contributions even
+though his mean contributions are much lower than most of the other candidates.  
+Hillary Clinton received around $2.5 millions.
 
 ###create time series object with summarized monthly contributions
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
@@ -336,12 +415,14 @@ ts_m = apply.monthly(ts, FUN='sum')
 ts_m
 
 ```
+
 The above table shows contributions ($) received by month.
 
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 tidy(ts_m) %>% ggplot(aes(x=index,y=value/1000000)) + geom_line(color='red')+
-  scale_x_date(date_labels = '%b-%Y',date_breaks = "2 month",limits= as.Date(c("2007-01-01", "2008-12-01")))+
+  scale_x_date(date_labels = '%b-%Y',date_breaks = "2 month",
+               limits= as.Date(c("2007-01-01", "2008-12-01")))+
   xlab('Reporting period') +
   ylab('Contribution in millions')+
   theme(axis.text.x = element_text(angle = 60, hjust = 1))+
@@ -349,30 +430,43 @@ tidy(ts_m) %>% ggplot(aes(x=index,y=value/1000000)) + geom_line(color='red')+
 geom_vline(aes(xintercept=(as.numeric(as.Date("2008-02-01")))))
 ```
 
-There are two peaks in contriutions.  The first one is right after WA primary is done end of February. And again the contributions started going up after the national convention is done in August reaching a peak in October.  Two vertical lines represent WA primaries and National conventions respectively.
+There are two peaks in contriutions.  The first one is right after WA primary is
+done end of February. And again the contributions started going up after the 
+national convention is done in August reaching a peak in October.  Two vertical 
+lines represent WA primaries and National conventions respectively.
 
 
 
 #Bivariate Analysis
-###Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
-Mean contribution amount for Republicans is higher compared to Democrats.  This might be due to upper class leaning towards conservatives and middle class leaning towards liberals.
+###Talk about some of the relationships you observed in this part of the 
+###investigation. How did the feature(s) of interest vary with other features
+###in the dataset?
+Mean contribution amount for Republicans is higher compared to Democrats.  
+This might be due to upper class leaning towards conservatives and middle class
+leaning towards liberals.
 
 Both males and females equally participated in election contributions.
 
 ### Did you observe any interesting relationships between the other features?
 Most of the contributions received were below $250.  
 
-$50 is the mode for contributions received by democrats whereas $100 is the mode for Republican contributions.
+$50 is the mode for contributions received by democrats whereas $100 is the
+mode for Republican contributions.
 
-The general election candidates, John McCain received total 8,143 contributions and Barack Obama received 96,902 which is almost 12 times more contributions than his Republican counterpart.
+The general election candidates, John McCain received total 8,143 contributions
+and Barack Obama received 96,902 which is almost 12 times more contributions 
+than his Republican counterpart.
 
-Contribution totals for Barack Obama is $15 million, where as John McCain received a total of $2.3 million.
+Contribution totals for Barack Obama is $15 million, where as John McCain 
+received a total of $2.3 million.
 
 Contributions reached peak in October 2008 just before the election.
 
 
 ### What was the strongest relationship you found?
-Strongest relationship is between party and the number of contributions received. Since WA is liberal leaning state, it is no surprise there are significantly more number of contributions made to democrats than Republicans.
+Strongest relationship is between party and the number of contributions 
+received. Since WA is liberal leaning state, it is no surprise there are 
+significantly more number of contributions made to democrats than Republicans.
 
 
 #Multivariate plots
@@ -382,26 +476,31 @@ Strongest relationship is between party and the number of contributions received
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 ####summary table using dplyr arranged by gender and cand_nm
 wag2 <- group_by (wa, cand_nm, gender)
-wa.by_candnm_gender <- summarise(wag2, contribution_mean=mean(contb_receipt_amt), contribution_median=median(contb_receipt_amt),
-                                 contribution_total=sum(contb_receipt_amt), n=n())
+wa.by_candnm_gender <- summarise(wag2, 
+                                 contribution_mean=mean(contb_receipt_amt), contribution_median=median(contb_receipt_amt),
+                                 contribution_total=sum(contb_receipt_amt),
+                                 n=n())
 arrange(wa.by_candnm_gender, cand_nm,gender )
 ```
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 ##reshaping summary data -- 
-wag2.wide <- dcast(wa.by_candnm_gender, cand_nm ~ gender, value.var='contribution_total')
+wag2.wide <- dcast(wa.by_candnm_gender, cand_nm ~ gender, 
+                   value.var='contribution_total')
 wag2.wide
 ```
 
-```{r echo = FALSE, message=FALSE, warning=FALSE}
-ggplot(aes(x=cand_nm, y=(contribution_total/1000000)), data=wa.by_candnm_gender)+
-  geom_line(aes(color=gender), group=1)+
+```{r}
+totals = wa.by_candnm_gender$contribution_total/1000000
+ggplot(aes(x=cand_nm, y=(contribution_total/1000000)), 
+       data=wa.by_candnm_gender)+
+  geom_bar(aes(fill=gender), group=1 ,stat="identity", position='dodge')+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
   xlab("Candidate Name")+
-  ylab("Contributions received in millions")+
-  theme(axis.text.x = element_text(angle = 30, hjust = 1))+
-  geom_hline(yintercept = 0, alpha=1, linetype =5)
+  ylab("Contribution totals in millions")
 ```
 
-Out of the people contributed to each candidate, females outweigh males for Hillary and vice versa for Barack Obama.
+Out of all the people contributed to each candidate, females outweigh males for 
+Hillary and vice versa for Barack Obama and all other male candidates.
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 ggplot(aes(x=cand_nm,y=female/male), data=wag2.wide)+
@@ -413,19 +512,22 @@ ggplot(aes(x=cand_nm,y=female/male), data=wag2.wide)+
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
-Proportion of female to male donations are depicted in the above plot.  Hillary clinton has 1.5 times more female contributors than male. All other candidates had more male contributors than female.
+Proportion of female to male donations are depicted in the above plot. 
+Hillary clinton has 1.5 times more female contributors than male. All other 
+candidates had more male contributors than female.
 
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
- ggplot(aes(x=cand_nm, y=n), data=wa.by_candnm_gender)+
-  geom_line(aes( group=1),color='black', linetype ='solid', size=1)+
-  geom_point(aes(color=gender), size =3)+
-  ylab("Number of contributions received")+
-  xlab("Candidate Name") +
-  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+ggplot(aes(x=cand_nm, y=n), data=wa.by_candnm_gender)+
+  geom_bar(aes(fill=gender), group=1 ,stat="identity", position='dodge')+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  xlab("Candidate Name")+
+  ylab("Number of contributions received")
 ```
 
-This line plot shows us number of contributions received from males vs females for each candidate.  Hillary Clinton received more contributions from females compared to males.
+This line plot shows us number of contributions received from males vs females 
+for each candidate.  Hillary Clinton received more contributions from females 
+compared to males.
 
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
@@ -433,18 +535,20 @@ ggplot(aes(x=cand_nm, y=contb_receipt_amt), data=wa)+
    geom_jitter(aes(color=party), alpha=1/20,position= position_jitter(h=0))+
   xlab("Candidate Name")+
   ylab("Contribution amounts")+
- # geom_point(aes(color=gender),alpha=1/20, position= position_jitter(h=0), color='orange')+
+ # geom_point(aes(color=gender),alpha=1/20, position= position_jitter(h=0), 
   coord_cartesian( ylim=c(0,2500))+
   theme(axis.text.x = element_text(angle = 30, hjust = 1))+
   scale_color_manual(breaks = c("R", "D"), values=c("blue", "red"))+
   geom_hline(yintercept = 0, alpha=1, linetype =5)
 ```
 
-This scatter plot helps us visualize that the most contributions are below $250. There is a good number of donations for amounts $500, $1000 and $2250
+This scatter plot helps us visualize that the most contributions are below $250. 
+There is a good number of donations for amounts $500, $1000 and $2250
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 wa$contbr_zip<- clean.zipcodes(wa$contbr_zip)
-contrib.zip<-aggregate(data.frame(count=wa$contb_receipt_amt),list(zip=wa$contbr_zip),length)
+contrib.zip<-aggregate(data.frame(count=wa$contb_receipt_amt),
+                       list(zip=wa$contbr_zip),length)
 contrib<- merge(contrib.zip, zipcode, by='zip')
 contrib_wa <- subset(contrib, state=='WA')
 states <- map_data("state")
@@ -455,14 +559,17 @@ wa_state <- subset(states, region %in% c("washington"))
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 ggplot(contrib_wa,aes(longitude,latitude)) +
-  geom_polygon(data=wa_state,aes(x=long,y=lat,group=group),color='black',fill='light green',alpha=.35)+
+  geom_polygon(data=wa_state,aes(x=long,y=lat,group=group),color='black',
+               fill='light green',alpha=.35)+
   geom_point(aes(color=count ), alpha =1, size=2) +
  # theme_awhstin(grid=F)
  xlim(-125,-115)+ylim(45,50)+
 scale_colour_gradient(low = "pink", high = "dark red")
+
 ```
 
-In WA state significant number of contributions came from zipcodes in and around Seattle. The second highest contributions seems to be from Spokane area
+In WA state significant number of contributions came from zipcodes in and 
+around Seattle. The second highest contributions seems to be from Spokane area
 
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
@@ -471,7 +578,8 @@ ggplot(wa, aes(x=contb_receipt_amt)) + geom_density(aes(color=party))+
   scale_color_manual(breaks = c("R", "D"), values=c("blue", "red"))
 ```
 
-The density curve shows democrats have high probability of receiving modest contributions compared to Republicans.
+The density curve shows democrats have high probability of receiving modest 
+contributions compared to Republicans.
 
 ###Create a linear regression model to predict contribution amounts
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
@@ -479,25 +587,33 @@ m1 = lm(contb_receipt_amt ~    cand_nm  + gender + contbr_zip  , data=wa)
 ```
 
 m1 = lm(contb_receipt_amt ~    cand_nm  + gender + contbr_zip  , data=wa)
-R-squared is 0.069 and it doesn't seem to be a very strong model.  Given that contribution amounts vary a lot, it is very hard to predict it using a simple linear model. This is the best linear model that is possible for this data.
+R-squared is 0.069 and it doesn't seem to be a very strong model.  Given that 
+contribution amounts vary a lot, it is very hard to predict it using a simple 
+linear model. This is the best linear model that is possible for this data.
 
 # Multivariate Analysis
 
-### Talk about some of the relationships you observed in this part of theinvestigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+### Talk about some of the relationships you observed in this part of the 
+###investigation. Were there features that strengthened each other in terms of 
+###looking at your feature(s) of interest?
 
-More females donated to Hillary Clinton than males, for all other candidates number of male contributions are higher than females.
+More females donated to Hillary Clinton than males, for all other candidates 
+number of male contributions are higher than females.
 
 Most contributions are for below $250
 
-Significant number of contributions came from zip codes /cities in and around Seattle.  Next highest number of contributions is around Spokane area.
+Significant number of contributions came from zip codes /cities in and around 
+Seattle.  Next highest number of contributions is around Spokane area.
 
 
 ### Were there any interesting or surprising interactions between features?
 More number contributions came from urban areas compared to rural areas.
 
-### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
-Created a linear model to predict the contribution amounts. However it is a very weak model with R-square value of 
-0.069. Given that contribution amounts vary a lot, it is hard to predict it using a linear model.
+### OPTIONAL: Did you create any models with your dataset? Discuss the strengths
+###and limitations of your model.
+Created a linear model to predict the contribution amounts. However it is a 
+very weak model with R-square value of 0.069. Given that contribution amounts 
+vary a lot, it is hard to predict it using a linear model.
 
 # Final Plots and Summary
 
@@ -515,51 +631,91 @@ ggtitle("2008 Election - Number of contributions received by candidate")+
 ```
 
 ### Description One
-This plot shows the energy and passion people had for Barack Obama and it reflected in the overwhelming number of contributions he received compared to other candidates.
+This plot shows the energy and passion people had for Barack Obama and it 
+reflected in the overwhelming number of contributions he received compared to 
+other candidates.
 
 ### Plot Two
 
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
- ggplot(aes(x=cand_nm, y=contribution_mean), data=wa.by_candnm)+
-  geom_line(aes( group=1), color='blue', linetype ='solid', size=1)+
+  ggplot(aes(x=cand_nm, y=(contribution_mean)), data=wa.by_candnm)+
+  geom_bar(aes(), fill = "light blue", color = 'black', group=1 ,
+           stat="identity", position='dodge')+
   ylab("Contribution mean in $")+
   xlab("Candidate Name")+
-  theme(axis.text.x = element_text(angle = 60, hjust=1))+
   ggtitle("2008 Election - mean contributions received by candidate")+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5))
+
 ```
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
-ggplot(aes(x=cand_nm, y=contribution_total/1000000), data=wa.by_candnm)+
-  geom_line(aes( group=1),color='blue', linetype ='solid', size=1)+
+ ggplot(aes(x=cand_nm, y=contribution_total/1000000), data=wa.by_candnm)+
+  geom_bar(aes(), fill = "light blue", color = 'black', group=1 ,stat="identity",
+           position='dodge')+
   ylab("Total contributions received in millions" )+
   xlab("Candidate Name")+
+  ggtitle("2008 Election - mean contributions received by candidate")+
   theme(axis.text.x = element_text(angle = 60, hjust = 1))+
-  ggtitle("2008 Election - Total contributions received by candidate")+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5))
 ```
 
 ### Description Two
-The plots above show that the mean contributions are much higher for Republican candidates Mitt Romney being the highest.
-Even though mean contributions for democrats are lower, the contributions totals are much higher compared to Republicans. Barack Obama received $15 million compared to John McCain's $2.5 million.
+The plots above show that the mean contributions are much higher for Republican 
+candidates Mitt Romney being the highest.
+Even though mean contributions for democrats are lower, the contributions totals 
+are much higher compared to Republicans. Barack Obama received $15 million 
+compared to John McCain's $2.5 million.
 
 ### Plot Three
 ```{r echo = FALSE, message=FALSE, warning=FALSE}
 ggplot(contrib_wa,aes(longitude,latitude)) +
-  geom_polygon(data=wa_state,aes(x=long,y=lat,group=group),color='black',fill='light green',alpha=.35)+
+  geom_polygon(data=wa_state,aes(x=long,y=lat,group=group),color='black',
+               fill='light green',alpha=.35)+
   geom_point(aes(color=count ), alpha =1, size=2) +
  # theme_awhstin(grid=F)
  xlim(-125,-115)+ylim(45,50)+
 scale_colour_gradient(low = "pink", high = "dark red")+
   ggtitle("2008 Election - Number of contributions by zipcode")+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5))
+ 
 ```
 
 ### Description Three
-This plot above shows that most number of contributions came from in and around Seattle zipcodes. Next highest contributions are from Spokane area.  This implies that cotributions from urban areas is much higher than rural areas.
+This plot above shows that most number of contributions came from in and around 
+Seattle zipcodes. Next highest contributions are from Spokane area.  This 
+implies that cotributions from urban areas is much higher than rural areas.
 
 # Reflection
-The 2008 election contribution data set for WA state contains 147149 observations and 18 variables.  I reviewed the summary of the dataset and removed refunds and reattributions to eliminate double counting. I also removed the columns that are not helpful for the analysis to reduce the size of the dataset.  Then I chose to add couple of columns (gender and party) to help with the analysis.  I further removed the records for the candidates who received less than 500 contributions.   The final dataset I used for analysis contained 130260 observations and 13 variables.
+The 2008 election contribution data set for WA state contains 147149 
+observations and 18 variables.  I reviewed the summary of the dataset and 
+removed refunds and reattributions to eliminate double counting. I also removed
+the columns that are not helpful for the analysis to reduce the size of the 
+dataset.  Then I chose to add couple of columns (gender and party) to help with
+the analysis.  I further removed the records for the candidates who received 
+less than 500 contributions.   The final dataset I used for analysis contained 
+130260 observations and 13 variables.
 
-Since WA State leans toward democrats, I was expecting to see higher contributions for democrats.  However, the analysis showed that mean contribution amount is higher for republicans. But the number of contributions received by democrats is way higher than republicans, which is expected.  Also Barack Obama received $15million in total contributions compared to $2.5 million for John McCain.   I was surprised to see such a significant difference between the final two candidates.  Also it was good to see both females and males showed equal enthusiasm in their participation in election contributions.
+My main struggle was to try and create a density map for contributions using
+zipcodes. However, I was not able to merge this with county data to be able to
+create a heatmap. So I chose to show summarize counts by zipcode with color 
+gradient.  All other transformations performed were realtively easy.
 
-I created a linear model to predict contribution amounts based on the variables gender, zipcode and candidate name. It turned out that it is a weak model with R-squared 0.069.   I expected adding  Party will improve the model, but didn't make a difference.   Given that contribution amounts vary a lot, it will be very hard to predict it with a simple linear model. A different type of model should be considered in the future.  Further analysis can be done based on contributor's occupation, but the data will need lot of clean up before analysis.
+
+Since WA State leans toward democrats, I was expecting to see higher 
+contributions for democrats.  However, the analysis showed that mean 
+contribution amount is higher for republicans. But the number of contributions
+received by democrats is way higher than republicans, which is expected.  Also
+Barack Obama received $15million in total contributions compared to $2.5 
+million for John McCain.   I was surprised to see such a significant difference
+between the final two candidates.  Also it was good to see both females and 
+males showed equal enthusiasm in their participation in election contributions.
+
+
+I created a linear model to predict contribution amounts based on the variables
+gender, zipcode and candidate name. It turned out that it is a weak model with 
+R-squared 0.069.   I expected adding  Party will improve the model, but didn't
+make a difference.   Given that contribution amounts vary a lot, it will be 
+very hard to predict it with a simple linear model. A different type of model 
+should be considered in the future.  Further analysis can be done based on 
+contributor's occupation, but the data will need lot of clean up before 
+analysis.
